@@ -8,33 +8,17 @@ namespace ZILab3Lib
 {
     public class EncodingService
     {
-        //public bool ValidateKey(string key)
-        //{
-        //    return key.All(e => ValidateKeyChar(Convert.ToInt32(e.ToString())));
-        //}
+        public EncodingService()
+        {
+            //uint[] key = new uint[4] { 99999, 88888, 77777, 66666 };
+            //uint[] test = new uint[4] { 945779817, 5325131, 0, 0 };
 
-        //private byte CyclicBitShift(byte a, byte s) => (byte)((a >> s) | ((a << (8 - s)) & 255));
-
-        //private byte ShiftByte(byte b, int i, byte[] key)
-        //{
-        //    const byte evenMask = 0b01010101;
-        //    const byte oddMask = 0b10101010;
-        //    var bEven = b & evenMask;
-        //    var bOdd = b & oddMask;
-        //    return CyclicBitShift((byte)((bEven << 1) | (bOdd >> 1)), key[i % key.Length]);
-        //}
-
-        //private byte UnshiftByte(byte b, int i, byte[] key)
-        //{
-        //    var unshiftedB = CyclicBitShift(b, (byte)(8 - key[i % key.Length]));
-
-        //    const byte evenMask = 0b01010101;
-        //    const byte oddMask = 0b10101010;
-
-        //    var bEven = unshiftedB & evenMask;
-        //    var bOdd = unshiftedB & oddMask;
-
-        //    return (byte)((bEven << 1) | (bOdd >> 1));
+            //EncodeBlock(test, key);
+            //uint[] encoded = new uint[] { test[0], test[1], test[2], test[3] };
+            //var t = string.Join(",", test);
+            //DecodeBlock(test, key);
+            //var t2 = string.Join(",", test);
+        }
 
         private uint CreateInt(byte[] data, int i)
         {
@@ -49,15 +33,51 @@ namespace ZILab3Lib
             return code;
         }
 
-        private byte[] WriteBytes(uint[] ints) {
+        private byte[] WriteBytes(uint[] ints, int numBytes, bool encoding, uint originalNumberOfBytes) {
             var bytes = new List<byte>();
 
-            for (int i = 0; i < ints.Length; i++)
+            if (encoding)
             {
-                bytes.Add((byte)ints[i]);
-                bytes.Add((byte)(ints[i] >> 8));
-                bytes.Add((byte)(ints[i] >> 16));
-                bytes.Add((byte)(ints[i] >> 24));
+                // this is encoding and we need to preserve number of bytes 
+                // in the original file, so add it to the beggining of the 
+                // encoded file
+                bytes.Add((byte)numBytes);
+                bytes.Add((byte)(numBytes >> 8));
+                bytes.Add((byte)(numBytes >> 16));
+                bytes.Add((byte)(numBytes >> 24));
+            }
+
+            if (encoding)
+            {
+                for (int i = 0; i < ints.Length; i++)
+                {
+                    bytes.Add((byte)ints[i]);
+                    bytes.Add((byte)(ints[i] >> 8));
+                    bytes.Add((byte)(ints[i] >> 16));
+                    bytes.Add((byte)(ints[i] >> 24));
+                }
+            } 
+            else
+            {
+                for (int i = 0; i < ints.Length; i++)
+                {
+                    if (bytes.Count < originalNumberOfBytes)
+                    {
+                        bytes.Add((byte)ints[i]);
+                    }
+                    if (bytes.Count < originalNumberOfBytes)
+                    {
+                        bytes.Add((byte)(ints[i] >> 8));
+                    }
+                    if (bytes.Count < originalNumberOfBytes)
+                    {
+                        bytes.Add((byte)(ints[i] >> 16));
+                    }
+                    if (bytes.Count < originalNumberOfBytes)
+                    {
+                        bytes.Add((byte)(ints[i] >> 24));
+                    }
+                }
             }
 
             return bytes.ToArray();
@@ -99,24 +119,32 @@ namespace ZILab3Lib
                 intDataArray[i + 3] = block2[3];
             }
 
-            return WriteBytes(intDataArray);
+            return WriteBytes(intDataArray, data.Length, true, 0);
+        }
+
+        private void printBlock(string code, int stage, uint[] block)
+        {
+            //var t = string.Join(",", block);
+            //Console.WriteLine("{0}-{1}: {2}", code, stage, t);
         }
 
         private void EncodeBlock(uint[] block, uint[] key)
         {
+            //printBlock("e", 0, block);
             for (int i = 0; i < 4; i++)
             {
                 block[i] ^= key[(i) % 4];
             }
-
+            //printBlock("e", 1, block);
             for (int j = 1; j <= 6; j++)
             {
                 f(block);
-
+                //printBlock("ef", j+1, block);
                 for (int i = 0; i < 4; i++)
                 {
-                    block[i] = block[i] ^ key[(i + j) % 4];
+                    block[i] ^= key[(i + j) % 4];
                 }
+                //printBlock("e", j+1, block);
             }
         }
 
@@ -128,18 +156,23 @@ namespace ZILab3Lib
         private void f(uint[] block)
         {
             const uint C = 0x2aaaaaaa;
-            const uint C0 = 0x025f1cdb;
-            const uint C1 = 2 * C0;
-            const uint C2 = C0 << 3;
-            const uint C3 = C0 << 7;
+            const UInt64 C0 = 0x025f1cdb;
+            const UInt64 C1 = C0 << 1;
+            const UInt64 C2 = C0 << 3;
+            const UInt64 C3 = (C0 << 7) % uint.MaxValue;
 
 
-            uint[] c = new uint[4] { C0, C1, C2, C3 };
+            UInt64[] c = new UInt64[4] { C0, C1, C2, C3 };
+            
+            //printBlock("fstart", 0, block);
 
             for (int i = 0; i < 4; i++)
             {
-                block[i] = block[i] == uint.MaxValue ? block[i] : (c[i] * block[i]) % uint.MaxValue;
+                UInt64 num = (UInt64)(c[i]) * (UInt64)block[i];
+                block[i] = block[i] == uint.MaxValue ? block[i] : (uint)((num) % uint.MaxValue);
             }
+
+            //printBlock("fmul", 1, block);
 
             if ((block[0] & 1) == 1)
             {
@@ -151,10 +184,14 @@ namespace ZILab3Lib
                 block[2] ^= C;
             }
 
+            //printBlock("fc", 2, block);
+
             for (int i = 0; i < 4; i++)
             {
-                block[i] = (block[mod(i-1, 4)]) ^ ( block[i] ) ^ (block[(i+1) % 4]); 
+                block[i] = block[mod(i - 1, 4)] ^ (block[i]) ^ block[(i + 1) % 4]; // ^ (block[(i + 1) % 4]);
             }
+
+            //printBlock("fxor", 3, block);
         }
 
         public byte[] Decode(byte[] encodedData, uint[] key)
@@ -168,9 +205,11 @@ namespace ZILab3Lib
                 throw new ArgumentNullException(nameof(key));
             }
 
+            uint origSize = BitConverter.ToUInt32(encodedData, 0);
+
 
             var intData = new List<uint>();
-            for (int i = 0; i < encodedData.Length; i += 4)
+            for (int i = 4; i < encodedData.Length; i += 4)
             {
                 intData.Add(CreateInt(encodedData, i));
             }
@@ -193,42 +232,45 @@ namespace ZILab3Lib
                 intDataArray[i + 3] = block2[3];
             }
 
-            return WriteBytes(intDataArray);
+            return WriteBytes(intDataArray, encodedData.Length, false, origSize);
         }
 
         private void DecodeBlock(uint[] block, uint[] key)
         {
+            //printBlock("d", 0, block);
             for (int i = 0; i < 4; i++)
             {
                 block[i] ^= key[(i + 2) % 4];
             }
-
+            //printBlock("d", 1, block);
             for (int j = 5; j >=0 ; j--)
             {
                 fReverse(block);
-
+                //printBlock("df", 6 - j, block);
                 for (int i = 0; i < 4; i++)
                 {
                     block[i] ^= key[(i + j) % 4];
                 }
-
+                //printBlock("d", 6 - j, block);
             }
         }
 
         private void fReverse(uint[] block)
         {
             const uint C = 0x2aaaaaaa;
-            const uint C0 = 0x0dad4694;
-            const uint C1 = 0x06d6a34a;
-            const uint C2 = 0x81b5a8d2;
-            const uint C3 = 0x281b5a8d;
+            const UInt64 C0 = 0x0dad4694;
+            const UInt64 C1 = 0x06d6a34a;
+            const UInt64 C2 = 0x81b5a8d2;
+            const UInt64 C3 = 0x281b5a8d;
 
-            uint[] c = new uint[4] { C0, C1, C2, C3 };
-
-            for (int i = 0; i < 4; i++)
+            UInt64[] c = new UInt64[4] { C0, C1, C2, C3 };
+            //printBlock("rstart", 0, block);
+            for (int i = 3; i >= 0; i--)
             {
-                block[i] = (block[mod(i - 1, 4)]) ^ (block[i]) ^ (block[(i + 1) % 4]);
+                block[i] = block[mod(i-1, 4)] ^ block[i] ^ block[(i + 1) % 4];
             }
+
+            //printBlock("rxor", 1, block);
 
             if ((block[0] & 1) == 1)
             {
@@ -240,11 +282,15 @@ namespace ZILab3Lib
                 block[2] ^= C;
             }
 
-            for (int i = 0; i < 4; i++)
+            //printBlock("rc", 2, block);
+
+            for (int i = 3; i >= 0; i--)
             {
-                block[i] = block[i] == uint.MaxValue ? block[i] : (c[i] * block[i]) % uint.MaxValue;
+                UInt64 num = (UInt64)(c[i]) * (UInt64)block[i];
+                block[i] = block[i] == uint.MaxValue ? block[i] : (uint)((num) % uint.MaxValue);
             }
 
+            //printBlock("rmul", 3, block);
         }
 
     }

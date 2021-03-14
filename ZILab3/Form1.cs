@@ -68,10 +68,10 @@ namespace ZILab3
         {
             //try
             //{
-                var bytes = ReadAllBytes(encodeFileDialog);
-                var encodedBytes = encodingSerivice.Encode(bytes, GetKey());
-                var filename = encodeFileDialog.FileName;
-                File.WriteAllBytes($"{filename}.{Guid.NewGuid()}.enc", encodedBytes);
+            var bytes = ReadAllBytes(encodeFileDialog);
+            var encodedBytes = encodingSerivice.Encode(bytes, GetKey());
+            var filename = encodeFileDialog.FileName;
+            File.WriteAllBytes($"{filename}.{Guid.NewGuid()}.enc", encodedBytes);
             //}
             //catch (Exception error)
             //{
@@ -84,10 +84,10 @@ namespace ZILab3
         {
             //try
             //{
-                var bytes = ReadAllBytes(decodeFileDialog);
-                var decodedBytes = encodingSerivice.Decode(bytes, GetKey());
-                var filename = decodeFileDialog.FileName;
-                File.WriteAllBytes($"{filename}.{Guid.NewGuid()}.dec", decodedBytes);
+            var bytes = ReadAllBytes(decodeFileDialog);
+            var decodedBytes = encodingSerivice.Decode(bytes, GetKey());
+            var filename = decodeFileDialog.FileName;
+            File.WriteAllBytes($"{filename}.{Guid.NewGuid()}.dec", decodedBytes);
             //}
             //catch (Exception error)
             //{
